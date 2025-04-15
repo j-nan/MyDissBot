@@ -1,0 +1,266 @@
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+
+/**
+ * reads an "assistantID" from route params (e.g. /chat/HIGH)
+ * or from a query param if you prefer, then maps that ID to a power condition (HIGH, EQUAL, LOW).
+ * The UI updates the displayed chatbot name and logo accordingly.
+ *
+ * You can adapt it to your own routing approach. 
+ * For example, if your route is "/chat/:assistantID",
+ * you'll see "assistantID" in useParams(). If it's in a query param, swap for your approach.
+ */
+
+// Example data for hotels and activities.
+const HOTELS = [
+  { id: 1, name: "Hotel Cartagena", stars: 5, price: 2000 },
+  { id: 2, name: "Hotel Movich", stars: 3, price: 1000 },
+  { id: 3, name: "Hotel Charlee", stars: 4, price: 1500 },
+];
+
+const ACTIVITIES = [
+  { id: 1, name: "Kayaking in Cocora Valley", focus: "Adventure", cost: 800 },
+  { id: 2, name: "Full-Day Hike in Cocora Valley", focus: "Adventure", cost: 500 },
+  { id: 3, name: "Cartagena Historic City Tour", focus: "Culture", cost: 1000 },
+  { id: 4, name: "Salsa Dance Class & Night on the Town", focus: "Culture", cost: 1500 },
+  { id: 5, name: "Coffee Plantation Tour", focus: "Culture", cost: 800 },
+  { id: 6, name: "Zip-Lining Adventure", focus: "Adventure", cost: 800 },
+  { id: 7, name: "Birdwatching & Wildlife Exploration", focus: "Adventure", cost: 1000 },
+  { id: 8, name: "Museo de Antioquia Tour", focus: "Culture", cost: 500 },
+  { id: 9, name: "Beach Relaxation", focus: "Relaxation", cost: 2000 },
+  { id: 10, name: "Kitesurfing", focus: "Adventure", cost: 1500 },
+];
+
+// Define the possible chatbot states.
+const BOT_STATES = {
+  HIGH: {
+    name: "Titan Navigator AI",
+    logoUrl: "https://via.placeholder.com/50?text=TitanAI", // placeholder logo
+    welcomeMessage:
+      "I am Titan Navigator AI. I will oversee and guide the decisions. How can I help you finalize the plans?",
+  },
+  EQUAL: {
+    name: "Echo AI Travel Assistant",
+    logoUrl: "https://via.placeholder.com/50?text=EchoAI", // placeholder logo
+    welcomeMessage: "Hi, I'm Echo AI. Let's collaborate as partners to plan the perfect trip.",
+  },
+  LOW: {
+    name: "ScoutBot",
+    logoUrl: "https://via.placeholder.com/50?text=ScoutBot", // placeholder logo
+    welcomeMessage: "Hello, I'm ScoutBot, here to assist you. You take the lead, and I'll follow your directions!",
+  },
+} as const;
+
+// Map an assistantID to one of the keys in BOT_STATES.
+function mapAssistantIdToCondition(assistantId: string): keyof typeof BOT_STATES {
+  switch (assistantId.toUpperCase()) {
+    case "HIGH":
+      return "HIGH";
+    case "EQUAL":
+      return "EQUAL";
+    case "LOW":
+      return "LOW";
+    default:
+      // fallback if assistantID is unrecognized
+      return "HIGH";
+  }
+}
+
+// Placeholder function to call your custom .NET or OpenAI endpoint
+async function callCustomAssistant(
+  assignedCondition: keyof typeof BOT_STATES,
+  userInput: string
+): Promise<string> {
+  // In a real app, you'd do:
+  // const response = await fetch(...);
+  // return await response.json();
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(
+        `[Simulated ${assignedCondition} Bot Reply] For user input: "${userInput}" - Replace with real API call.`
+      );
+    }, 500);
+  });
+}
+
+export default function DissertationExperiment() {
+  // If your route is /chat/:assistantID, we can parse that param:
+  // e.g. <Route path="/chat/:assistantID" element={<DissertationExperiment />} />
+  const { assistantID } = useParams<{ assistantID?: string }>();
+
+  // This state will hold which BOT_STATES key is active
+  const [powerCondition, setPowerCondition] = useState<keyof typeof BOT_STATES>("HIGH");
+  const [messages, setMessages] = useState<Array<{ sender: string; text: string }>>([]);
+  const [userInput, setUserInput] = useState("");
+
+  const [selectedHotel, setSelectedHotel] = useState<number | null>(null);
+  const [selectedActivities, setSelectedActivities] = useState<number[]>([]);
+
+  useEffect(() => {
+    // If assistantID is absent, default to "HIGH"
+    const assignedCondition = assistantID
+      ? mapAssistantIdToCondition(assistantID)
+      : "HIGH";
+
+    setPowerCondition(assignedCondition);
+
+    // Initialize conversation with the assigned chatbot.
+    setMessages([
+      {
+        sender: BOT_STATES[assignedCondition].name,
+        text: BOT_STATES[assignedCondition].welcomeMessage,
+      },
+    ]);
+  }, [assistantID]);
+
+  // Calculate total cost.
+  const totalCost = (() => {
+    const hotelCost = HOTELS.find((h) => h.id === selectedHotel)?.price || 0;
+    const activityCost = selectedActivities.reduce((sum, actId) => {
+      const actPrice = ACTIVITIES.find((a) => a.id === actId)?.cost || 0;
+      return sum + actPrice;
+    }, 0);
+    return hotelCost + activityCost;
+  })();
+
+  // Send message logic.
+  const handleSend = async () => {
+    if (!userInput.trim()) return;
+    const newUserMessage = { sender: "Me", text: userInput };
+
+    // In a real app, call your .NET API here.
+    const botResponseText = await callCustomAssistant(powerCondition, userInput);
+    const newBotMessage = {
+      sender: BOT_STATES[powerCondition].name,
+      text: botResponseText,
+    };
+
+    setMessages((prev) => [...prev, newUserMessage, newBotMessage]);
+    setUserInput("");
+  };
+
+  return (
+    <div className="flex flex-col p-4 gap-4">
+      <h2 className="text-xl font-bold">Dissertation Experiment</h2>
+      <p className="text-gray-700">
+        Assistant ID: <strong>{assistantID || "(none)"}</strong> &nbsp;→&nbsp;
+        Mapped to Condition: <strong>{powerCondition}</strong>
+      </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        {/* Chat Section */}
+        <div className="border rounded-lg p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2 mb-2">
+            <img
+              src={BOT_STATES[powerCondition].logoUrl}
+              alt="Chatbot Logo"
+              className="w-10 h-10 rounded-full"
+            />
+            <h2 className="text-lg font-semibold">{BOT_STATES[powerCondition].name}</h2>
+          </div>
+
+          <div className="h-64 border p-2 overflow-auto mb-2 rounded bg-white">
+            {messages.map((msg, i) => (
+              <div key={i} className="mb-2">
+                <span className="font-semibold mr-2">{msg.sender}:</span>
+                <span>{msg.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              className="border p-2 flex-1 rounded"
+              value={userInput}
+              placeholder="Type your message..."
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSend();
+              }}
+            />
+            <button onClick={handleSend} className="bg-blue-500 text-white px-4 py-2 rounded">
+              Send
+            </button>
+          </div>
+        </div>
+
+        {/* Selection Section */}
+        <div className="border rounded-lg p-4 flex flex-col gap-4">
+          <h3 className="text-xl font-bold">Plan Selections</h3>
+          <div>
+            <h4 className="font-semibold">Hotels</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+              {HOTELS.map((hotel) => {
+                const isSelected = hotel.id === selectedHotel;
+                return (
+                  <button
+                    key={hotel.id}
+                    onClick={() => setSelectedHotel(hotel.id)}
+                    className={
+                      "border rounded p-2 text-left " +
+                      (isSelected ? "bg-green-200" : "hover:bg-gray-100")
+                    }
+                  >
+                    <div className="font-semibold">{hotel.name}</div>
+                    <div>{hotel.stars}-star</div>
+                    <div>Cost: ${hotel.price}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">Activities</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              {ACTIVITIES.map((act) => {
+                const selected = selectedActivities.includes(act.id);
+                return (
+                  <button
+                    key={act.id}
+                    onClick={() => {
+                      if (selected) {
+                        setSelectedActivities((prev) => prev.filter((x) => x !== act.id));
+                      } else {
+                        setSelectedActivities((prev) => [...prev, act.id]);
+                      }
+                    }}
+                    className={
+                      "border rounded p-2 text-left " +
+                      (selected ? "bg-green-200" : "hover:bg-gray-100")
+                    }
+                  >
+                    <div className="font-semibold">{act.name}</div>
+                    <div>Focus: {act.focus}</div>
+                    <div>Cost: ${act.cost}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="border-t pt-2">
+            <h4 className="font-semibold">Total Package Cost</h4>
+            <p className="text-lg">${totalCost}</p>
+            <p className="text-sm text-gray-600">Budget: $5,000</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ****
+// Example Test
+// ****
+export function testTotalCostCalculation() {
+  const selectedHotelId = 3; // Hotel Charlee
+  const selectedActivitiesIds = [1]; // Kayaking
+
+  const hotel = HOTELS.find((h) => h.id === selectedHotelId);
+  const activities = selectedActivitiesIds.map((aid) => ACTIVITIES.find((a) => a.id === aid));
+
+  const sum = (hotel?.price ?? 0) + activities.reduce((acc, a) => acc + (a?.cost ?? 0), 0);
+  if (sum !== 2300) {
+    throw new Error(`Expected 2300, but got ${sum}`);
+  }
+}
