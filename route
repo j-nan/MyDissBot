@@ -1,0 +1,13 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import DissertationExperiment from './DissertationExperiment';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path='/chat/:assistantID' element={<DissertationExperiment />} />
+        {/* ... other routes */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
